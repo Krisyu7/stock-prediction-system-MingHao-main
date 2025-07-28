@@ -7,7 +7,8 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 
 @Entity
-@Table(name = "stock_prices")
+@Table(name = "stock_prices",
+        uniqueConstraints = @UniqueConstraint(columnNames = {"stock_id", "date"}))
 public class StockPrice {
      @Id
      @GeneratedValue(strategy = GenerationType.IDENTITY)

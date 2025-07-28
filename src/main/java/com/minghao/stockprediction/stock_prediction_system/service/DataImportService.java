@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.minghao.stockprediction.stock_prediction_system.entity.Stock;
 import com.minghao.stockprediction.stock_prediction_system.entity.StockPrice;
 import com.minghao.stockprediction.stock_prediction_system.repository.StockRepository;
+import com.minghao.stockprediction.stock_prediction_system.repository.StockPriceRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -21,6 +22,9 @@ public class DataImportService {
 
     @Autowired
     private StockRepository stockRepository;
+
+    @Autowired
+    private StockPriceRepository stockPriceRepository;
 
     @Autowired
     private StockPriceService stockPriceService;
@@ -73,13 +77,25 @@ public class DataImportService {
                 stockPrices.add(stockPrice);
             }
 
-            // 5. 批量保存到数据库
+            // 5. 批量保存到数据库（跳过重复数据）
+            int savedCount = 0;
             for (StockPrice price : stockPrices) {
-                stockPriceService.addStockPrice(price);
+                try {
+                    // 检查是否已存在
+                    StockPrice existing = stockPriceRepository.findByStockAndDate(price.getStock(), price.getDate());
+                    if (existing == null) {
+                        stockPriceService.addStockPrice(price);
+                        savedCount++;
+                    }
+                    // 如果已存在，静默跳过
+                } catch (Exception e) {
+                    // 处理其他可能的保存错误
+                    System.err.println("保存数据失败: " + price.getDate() + " - " + e.getMessage());
+                }
             }
 
-            System.out.println("成功导入 " + symbol + " 的 " + stockPrices.size() + " 条记录");
-            return stockPrices.size();
+            System.out.println("成功导入 " + symbol + " 的 " + savedCount + " 条新记录（共处理 " + stockPrices.size() + " 条）");
+            return savedCount;
 
         } catch (Exception e) {
             System.err.println("导入数据失败: " + e.getMessage());
